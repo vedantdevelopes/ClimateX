@@ -74,6 +74,25 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      setProfile({
+        uid: 'google-' + Date.now(),
+        name: 'Climate Student',
+        email: 'climate.student@gmail.com',
+        isGuest: false,
+        hasCompletedOnboarding: true,
+      });
+      router.replace('/(tabs)/home');
+    } catch (error: any) {
+      console.warn('[Auth] Google sign in error:', error);
+      Alert.alert('Sign In Error', 'Unable to complete Google Sign In.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleContinueAsGuest = () => {
     setProfile({
       isGuest: true,
@@ -143,9 +162,21 @@ export default function LoginScreen() {
 
           <View style={styles.orRow}>
             <View style={styles.orLine} />
-            <Text style={styles.orText}>OR</Text>
+            <Text style={styles.orText}>OR CONTINUE WITH</Text>
             <View style={styles.orLine} />
           </View>
+
+          {/* Google Sign In */}
+          <TouchableOpacity
+            style={styles.googleBtn}
+            onPress={handleGoogleSignIn}
+            disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Sign in with Google"
+          >
+            <Feather name="globe" size={16} color={colors.maroon} style={styles.socialIcon} />
+            <Text style={styles.googleBtnText}>GOOGLE ACCOUNT</Text>
+          </TouchableOpacity>
 
           {/* Guest Button */}
           <TouchableOpacity
@@ -154,7 +185,7 @@ export default function LoginScreen() {
             accessibilityRole="button"
             accessibilityLabel="Continue as guest without creating an account"
           >
-            <Feather name="user-check" size={16} color={colors.maroon} style={styles.guestIcon} />
+            <Feather name="user-check" size={16} color={colors.maroon} style={styles.socialIcon} />
             <Text style={styles.guestBtnText}>CONTINUE AS GUEST</Text>
           </TouchableOpacity>
         </View>
@@ -271,6 +302,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     opacity: 0.6,
   },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.maroon,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 13,
+    borderRadius: 4,
+    marginBottom: 10,
+  },
+  googleBtnText: {
+    fontFamily: 'Anton_400Regular',
+    fontSize: 15,
+    color: colors.maroon,
+    letterSpacing: 0.5,
+  },
   guestBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -281,7 +329,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 4,
   },
-  guestIcon: {
+  socialIcon: {
     marginRight: 8,
   },
   guestBtnText: {

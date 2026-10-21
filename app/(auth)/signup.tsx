@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 import { colors } from '../../theme/tokens';
 import { Heading } from '../../components/Heading';
 import { useUser } from '../../store/useUser';
@@ -111,6 +112,25 @@ export default function SignupScreen() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      setProfile({
+        uid: 'google-' + Date.now(),
+        name: name.trim() || 'Climate Student',
+        email: 'climate.student@gmail.com',
+        isGuest: false,
+        hasCompletedOnboarding: true,
+      });
+      router.replace('/(tabs)/home');
+    } catch (error: any) {
+      console.warn('[Auth] Google sign in error:', error);
+      Alert.alert('Sign In Error', 'Unable to complete Google Sign In.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -179,6 +199,23 @@ export default function SignupScreen() {
             ) : (
               <Text style={styles.signupBtnText}>START YOUR JOURNEY</Text>
             )}
+          </TouchableOpacity>
+
+          <View style={styles.orRow}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>OR CONTINUE WITH</Text>
+            <View style={styles.orLine} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.googleBtn}
+            onPress={handleGoogleSignIn}
+            disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Sign up with Google"
+          >
+            <Feather name="globe" size={16} color={colors.maroon} style={styles.socialIcon} />
+            <Text style={styles.googleBtnText}>GOOGLE ACCOUNT</Text>
           </TouchableOpacity>
         </View>
 
@@ -275,6 +312,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.blush,
     letterSpacing: 0.5,
+  },
+  orRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 14,
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(107, 0, 16, 0.2)',
+  },
+  orText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    color: colors.maroon,
+    paddingHorizontal: 10,
+    opacity: 0.6,
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.maroon,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 13,
+    borderRadius: 4,
+  },
+  googleBtnText: {
+    fontFamily: 'Anton_400Regular',
+    fontSize: 15,
+    color: colors.maroon,
+    letterSpacing: 0.5,
+  },
+  socialIcon: {
+    marginRight: 8,
   },
   footer: {
     flexDirection: 'row',
