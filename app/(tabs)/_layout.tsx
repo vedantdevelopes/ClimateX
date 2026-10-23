@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
@@ -38,8 +38,8 @@ function LivingEditorialTabBar({ state, navigation }: any) {
       <View style={[styles.floatingDock, { backgroundColor: dockBg }]}>
         <View style={styles.dockInner}>
           {TABS.map((tab) => {
-            const route = state.routes.find((r: any) => r.name === tab.name || r.name.startsWith(tab.name));
-            const currentRoute = state.routes[state.index];
+            const route = state?.routes?.find((r: any) => r.name === tab.name || r.name.startsWith(tab.name));
+            const currentRoute = state?.routes?.[state?.index];
             const isFocused = currentRoute?.name === tab.name || currentRoute?.name?.startsWith(tab.name);
 
             const onPress = () => {
@@ -47,18 +47,22 @@ function LivingEditorialTabBar({ state, navigation }: any) {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               } catch (_) {}
 
-              if (route) {
+              if (navigation?.emit && route?.key) {
                 const event = navigation.emit({
                   type: 'tabPress',
                   target: route.key,
                   canPreventDefault: true,
                 });
 
-                if (!isFocused && !event.defaultPrevented) {
+                if (event?.defaultPrevented) return;
+              }
+
+              if (!isFocused) {
+                if (navigation?.navigate && route?.name) {
                   navigation.navigate(route.name);
+                } else {
+                  router.navigate(`/(tabs)/${tab.name}` as any);
                 }
-              } else {
-                navigation.navigate(tab.name);
               }
             };
 

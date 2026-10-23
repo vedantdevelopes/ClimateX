@@ -100,9 +100,12 @@ export default function HomeScreen() {
         {/* RISK SCORE HERO CARD */}
         <Card style={styles.heroCard}>
           <View style={styles.cardHeaderRow}>
-            <Text style={[styles.cardTag, { color: theme.textMuted }]}>
-              OVERALL CLIMATE HAZARD
-            </Text>
+            <View style={styles.liveTagRow}>
+              <View style={styles.liveDot} />
+              <Text style={[styles.cardTag, { color: colors.teal }]}>
+                LIVE WEATHER · {riskData?.currentWeather?.weatherDescription?.toUpperCase() || 'REAL-TIME'}
+              </Text>
+            </View>
             <TouchableOpacity
               onPress={() => router.push('/(tabs)/risk')}
               style={styles.detailLink}
@@ -111,6 +114,36 @@ export default function HomeScreen() {
               <Feather name="arrow-up-right" size={14} color={theme.text} />
             </TouchableOpacity>
           </View>
+
+          {/* Live Temperature & High/Low Banner */}
+          {riskData?.currentWeather && (
+            <View
+              style={[
+                styles.liveWeatherBanner,
+                {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(107,0,16,0.04)',
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <View>
+                <Text style={[styles.liveTempBig, { color: theme.text }]}>
+                  {Math.round(riskData.currentWeather.temperature)}°C
+                </Text>
+                <Text style={[styles.liveConditionText, { color: theme.textMuted }]}>
+                  Feels like {Math.round(riskData.currentWeather.apparentTemperature)}°C
+                </Text>
+              </View>
+              <View style={styles.liveRightStats}>
+                <Text style={[styles.liveHighLowText, { color: theme.text }]}>
+                  H: {riskData.currentWeather.tempMax}°  L: {riskData.currentWeather.tempMin}°
+                </Text>
+                <Text style={[styles.liveHumidityText, { color: theme.textMuted }]}>
+                  Humidity {riskData.currentWeather.humidity}% · Wind {Math.round(riskData.currentWeather.windSpeed)} km/h
+                </Text>
+              </View>
+            </View>
+          )}
 
           <View style={styles.ringWrapper}>
             <Ring
@@ -133,7 +166,14 @@ export default function HomeScreen() {
                 <Text style={[styles.hazardTitle, { color: theme.text }]}>HEAT</Text>
               </View>
               <Text style={[styles.hazardValue, { color: theme.text }]}>
-                {riskData?.heat.rawValue || '32°C'}
+                {riskData?.currentWeather
+                  ? `${Math.round(riskData.currentWeather.temperature)}°C`
+                  : (riskData?.heat.rawValue || '28°C')}
+              </Text>
+              <Text style={[styles.hazardSubValue, { color: theme.textMuted }]}>
+                {riskData?.currentWeather
+                  ? `Peak ${riskData.currentWeather.apparentTempMax}°`
+                  : 'Peak 35°'}
               </Text>
             </TouchableOpacity>
 
@@ -150,6 +190,9 @@ export default function HomeScreen() {
               <Text style={[styles.hazardValue, { color: theme.text }]}>
                 {riskData?.aqi.rawValue || 'AQI 95'}
               </Text>
+              <Text style={[styles.hazardSubValue, { color: theme.textMuted }]}>
+                {riskData?.aqi.level || 'Moderate'}
+              </Text>
             </TouchableOpacity>
 
             <View style={[styles.hazardDivider, { backgroundColor: theme.rule }]} />
@@ -164,6 +207,9 @@ export default function HomeScreen() {
               </View>
               <Text style={[styles.hazardValue, { color: theme.text }]}>
                 {riskData?.flood.rawValue || '0 mm'}
+              </Text>
+              <Text style={[styles.hazardSubValue, { color: theme.textMuted }]}>
+                {riskData?.flood.level || 'Low'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -351,12 +397,56 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  liveTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.teal,
+    marginRight: 6,
   },
   cardTag: {
     fontFamily: 'Inter_700Bold',
     fontSize: 10,
     letterSpacing: 0.5,
+  },
+  liveWeatherBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 4,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  liveTempBig: {
+    fontFamily: 'Anton_400Regular',
+    fontSize: 28,
+    lineHeight: 32,
+    letterSpacing: -0.5,
+  },
+  liveConditionText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  liveRightStats: {
+    alignItems: 'flex-end',
+  },
+  liveHighLowText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+  },
+  liveHumidityText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    marginTop: 3,
   },
   detailLink: {
     flexDirection: 'row',
@@ -394,11 +484,16 @@ const styles = StyleSheet.create({
   },
   hazardValue: {
     fontFamily: 'Anton_400Regular',
-    fontSize: 15,
+    fontSize: 16,
+  },
+  hazardSubValue: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+    marginTop: 1,
   },
   hazardDivider: {
     width: 1,
-    height: 24,
+    height: 28,
   },
   sectionHeader: {
     flexDirection: 'row',

@@ -119,6 +119,64 @@ export default function RiskScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* LIVE WEATHER SNAPSHOT CARD */}
+        {riskData?.currentWeather && (
+          <Card style={styles.liveWeatherCard}>
+            <View style={styles.liveCardHeader}>
+              <View style={styles.liveHeaderLeft}>
+                <View style={styles.livePulseDot} />
+                <Text style={[styles.liveHeaderTag, { color: colors.teal }]}>
+                  REAL-TIME WEATHER
+                </Text>
+              </View>
+              <Text style={[styles.liveUpdatedText, { color: theme.textMuted }]}>
+                {new Date(riskData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </View>
+
+            <View style={styles.liveMainRow}>
+              <View style={styles.liveMainLeft}>
+                <Text style={[styles.liveBigTemp, { color: theme.text }]}>
+                  {Math.round(riskData.currentWeather.temperature)}°C
+                </Text>
+                <Text style={[styles.liveDescription, { color: theme.text }]}>
+                  {riskData.currentWeather.weatherDescription}
+                </Text>
+                <Text style={[styles.liveFeelsSub, { color: theme.textMuted }]}>
+                  Feels like {Math.round(riskData.currentWeather.apparentTemperature)}°C
+                </Text>
+              </View>
+
+              <View style={styles.liveStatsGrid}>
+                <View style={styles.liveStatItem}>
+                  <Text style={[styles.liveStatLabel, { color: theme.textMuted }]}>HIGH / LOW</Text>
+                  <Text style={[styles.liveStatValue, { color: theme.text }]}>
+                    {riskData.currentWeather.tempMax}° / {riskData.currentWeather.tempMin}°
+                  </Text>
+                </View>
+                <View style={styles.liveStatItem}>
+                  <Text style={[styles.liveStatLabel, { color: theme.textMuted }]}>HUMIDITY</Text>
+                  <Text style={[styles.liveStatValue, { color: theme.text }]}>
+                    {riskData.currentWeather.humidity}%
+                  </Text>
+                </View>
+                <View style={styles.liveStatItem}>
+                  <Text style={[styles.liveStatLabel, { color: theme.textMuted }]}>WIND</Text>
+                  <Text style={[styles.liveStatValue, { color: theme.text }]}>
+                    {Math.round(riskData.currentWeather.windSpeed)} km/h
+                  </Text>
+                </View>
+                <View style={styles.liveStatItem}>
+                  <Text style={[styles.liveStatLabel, { color: theme.textMuted }]}>HEAT INDEX</Text>
+                  <Text style={[styles.liveStatValue, { color: riskData.heat.color }]}>
+                    {riskData.currentWeather.apparentTempMax}°C peak
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </Card>
+        )}
+
         {/* 3 RISK CARDS */}
         {riskData ? (
           <>
@@ -162,11 +220,13 @@ export default function RiskScreen() {
                         <Text style={styles.miniLevelText}>{day.level.toUpperCase()}</Text>
                       </View>
                       <View style={[styles.outlookDivider, { backgroundColor: theme.rule }]} />
-                      <Text style={[styles.outlookTemp, { color: theme.textMuted }]}>
-                        {Math.round(day.apparentTempMax)}°C
+                      <Text style={[styles.outlookTemp, { color: theme.text }]}>
+                        {day.tempMax !== undefined && day.tempMin !== undefined
+                          ? `${day.tempMax}° / ${day.tempMin}°`
+                          : `${Math.round(day.apparentTempMax)}°C`}
                       </Text>
                       <Text style={[styles.outlookPrecip, { color: theme.textMuted }]}>
-                        {Math.round(day.precipitationSum)} mm
+                        {Math.round(day.precipitationSum)} mm rain
                       </Text>
                     </Card>
                   );
@@ -292,6 +352,81 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 0.5,
     marginRight: 4,
+  },
+  liveWeatherCard: {
+    marginBottom: 10,
+    padding: 14,
+  },
+  liveCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  liveHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.teal,
+    marginRight: 6,
+  },
+  liveHeaderTag: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    letterSpacing: 0.5,
+  },
+  liveUpdatedText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+  },
+  liveMainRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  liveMainLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  liveBigTemp: {
+    fontFamily: 'Anton_400Regular',
+    fontSize: 38,
+    lineHeight: 42,
+    letterSpacing: -1,
+  },
+  liveDescription: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  liveFeelsSub: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  liveStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: 160,
+    justifyContent: 'space-between',
+  },
+  liveStatItem: {
+    width: '48%',
+    marginBottom: 6,
+  },
+  liveStatLabel: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    letterSpacing: 0.5,
+  },
+  liveStatValue: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    marginTop: 1,
   },
   outlookSection: {
     marginTop: 14,

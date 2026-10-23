@@ -9,6 +9,20 @@ export interface SingleRiskScore {
   rawValue: string;
   explanation: string;
   tip: string;
+  currentValue?: string;
+  peakValue?: string;
+}
+
+export interface CurrentWeather {
+  temperature: number; // Current ambient temperature °C
+  apparentTemperature: number; // Current feels-like temperature °C
+  humidity: number; // Relative humidity %
+  weatherCode: number; // WMO weather interpretation code
+  weatherDescription: string; // Human readable condition (e.g. "Mainly Clear")
+  tempMax: number; // Today's high °C
+  tempMin: number; // Today's low °C
+  apparentTempMax: number; // Peak heat index °C
+  windSpeed: number; // Wind speed km/h
 }
 
 export interface DayForecast {
@@ -18,6 +32,8 @@ export interface DayForecast {
   precipitationSum: number;
   overallScore: number;
   level: RiskLevel;
+  tempMax?: number;
+  tempMin?: number;
 }
 
 export interface ComprehensiveRiskResult {
@@ -27,6 +43,7 @@ export interface ComprehensiveRiskResult {
   heat: SingleRiskScore;
   aqi: SingleRiskScore;
   flood: SingleRiskScore;
+  currentWeather?: CurrentWeather;
   threeDayOutlook: DayForecast[];
   timestamp: number;
   locationName: string;
@@ -55,7 +72,11 @@ export function getRiskLevelAndColor(score: number): { level: RiskLevel; color: 
  * 35–41°C -> 50–80
  * >=41°C -> 80–100 (cap 45°C = 100)
  */
-export function calculateHeatScore(apparentTempMax: number): SingleRiskScore {
+export function calculateHeatScore(
+  apparentTempMax: number,
+  currentTemp?: number,
+  currentApparentTemp?: number
+): SingleRiskScore {
   let score = 0;
   if (apparentTempMax <= 20) {
     score = 5;
@@ -77,17 +98,27 @@ export function calculateHeatScore(apparentTempMax: number): SingleRiskScore {
   const rounded = Math.max(0, Math.min(100, Math.round(score)));
   const { level, color } = getRiskLevelAndColor(rounded);
 
+  const curDisplay = typeof currentTemp === 'number' ? Math.round(currentTemp) : null;
+  const curFeels = typeof currentApparentTemp === 'number' ? Math.round(currentApparentTemp) : curDisplay;
+  const peakDisplay = Math.round(apparentTempMax);
+
   let explanation = 'Comfortable thermal index without heat exhaustion risk.';
   let tip = 'Great conditions for cycling and outdoor campus activities.';
 
   if (level === 'Moderate') {
-    explanation = `Feels like ${Math.round(apparentTempMax)}°C. Mild thermal stress during direct midday sun.`;
+    explanation = curDisplay !== null
+      ? `Currently ${curDisplay}°C (feels ${curFeels}°C). Today's peak heat index reaches ${peakDisplay}°C with mild midday thermal stress.`
+      : `Feels like ${peakDisplay}°C. Mild thermal stress during direct midday sun.`;
     tip = 'Hydrate before leaving campus and seek tree canopy shade.';
   } else if (level === 'High') {
-    explanation = `Intense heat index of ${Math.round(apparentTempMax)}°C. High risk of dehydration and cramps.`;
+    explanation = curDisplay !== null
+      ? `Currently ${curDisplay}°C (feels ${curFeels}°C). Peak daytime heat index hits ${peakDisplay}°C with elevated risk of dehydration.`
+      : `Intense heat index of ${peakDisplay}°C. High risk of dehydration and cramps.`;
     tip = 'Avoid outdoor exertion between 12–4 PM; carry electrolyte water.';
   } else if (level === 'Severe') {
-    explanation = `Dangerous heatwave condition (${Math.round(apparentTempMax)}°C). Severe risk of heat stroke.`;
+    explanation = curDisplay !== null
+      ? `Dangerous heat condition. Currently ${curDisplay}°C (feels ${curFeels}°C), surging to extreme peak heat index of ${peakDisplay}°C.`
+      : `Dangerous heatwave condition (${peakDisplay}°C). Severe risk of heat stroke.`;
     tip = 'Stay indoors with cooling; check on vulnerable neighbours.';
   }
 
@@ -95,7 +126,9 @@ export function calculateHeatScore(apparentTempMax: number): SingleRiskScore {
     score: rounded,
     level,
     color,
-    rawValue: `${Math.round(apparentTempMax)}°C`,
+    rawValue: curDisplay !== null ? `${curDisplay}°C` : `${peakDisplay}°C`,
+    currentValue: curDisplay !== null ? `${curDisplay}°C` : undefined,
+    peakValue: `${peakDisplay}°C feels-like`,
     explanation,
     tip,
   };

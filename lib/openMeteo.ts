@@ -61,6 +61,33 @@ export async function searchCities(query: string): Promise<GeocodedCity[]> {
   }
 }
 
+export function getWeatherDescription(code: number): string {
+  switch (code) {
+    case 0: return 'Clear sky';
+    case 1: return 'Mainly clear';
+    case 2: return 'Partly cloudy';
+    case 3: return 'Overcast';
+    case 45: return 'Fog';
+    case 48: return 'Depositing rime fog';
+    case 51: return 'Light drizzle';
+    case 53: return 'Moderate drizzle';
+    case 55: return 'Dense drizzle';
+    case 61: return 'Slight rain';
+    case 63: return 'Moderate rain';
+    case 65: return 'Heavy rain';
+    case 71: return 'Slight snowfall';
+    case 73: return 'Moderate snowfall';
+    case 75: return 'Heavy snowfall';
+    case 80: return 'Slight rain showers';
+    case 81: return 'Moderate rain showers';
+    case 82: return 'Violent rain showers';
+    case 95: return 'Thunderstorm';
+    case 96:
+    case 99: return 'Thunderstorm with hail';
+    default: return 'Fair';
+  }
+}
+
 export async function fetchClimateRiskData(
   latitude: number,
   longitude: number,
@@ -71,8 +98,8 @@ export async function fetchClimateRiskData(
   const safeLon = sanitizeCoordinate(longitude, -180, 180, 78.4867);
   const safeCity = (cityName || 'Hyderabad, India').slice(0, 100);
 
-  // Parallel fetch: Forecast, Air Quality, Flood (Flood can gracefully fail)
-  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${safeLat}&longitude=${safeLon}&daily=apparent_temperature_max,precipitation_sum&timezone=auto&forecast_days=4`;
+  // Parallel fetch: Live Current & Daily Forecast, Air Quality, Flood
+  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${safeLat}&longitude=${safeLon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&daily=apparent_temperature_max,temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto&forecast_days=4`;
   const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${safeLat}&longitude=${safeLon}&current=us_aqi,pm2_5&timezone=auto`;
   const floodUrl = `https://flood-api.open-meteo.com/v1/flood?latitude=${safeLat}&longitude=${safeLon}&daily=river_discharge&forecast_days=7`;
 
@@ -100,12 +127,50 @@ export async function fetchClimateRiskData(
     console.warn('[OpenMeteo] Error during parallel fetch:', err);
   }
 
-  // 1. Process Heat
+  // 1. Process Live Current Weather & Heat Extremes
+  const currentTemp =
+    typeof forecastData?.current?.temperature_2m === 'number'
+      ? forecastData.current.temperature_2m
+      : typeof forecastData?.daily?.temperature_2m_max?.[0] === 'number'
+      ? forecastData.daily.temperature_2m_max[0]
+      : 28.0;
+
+  const currentApparentTemp =
+    typeof forecastData?.current?.apparent_temperature === 'number'
+      ? forecastData.current.apparent_temperature
+      : currentTemp;
+
   const apparentTempMaxToday =
     typeof forecastData?.daily?.apparent_temperature_max?.[0] === 'number'
       ? forecastData.daily.apparent_temperature_max[0]
       : 32.0;
-  const heatScore = calculateHeatScore(apparentTempMaxToday);
+
+  const tempMaxToday =
+    typeof forecastData?.daily?.temperature_2m_max?.[0] === 'number'
+      ? forecastData.daily.temperature_2m_max[0]
+      : Math.round(currentTemp + 3);
+
+  const tempMinToday =
+    typeof forecastData?.daily?.temperature_2m_min?.[0] === 'number'
+      ? forecastData.daily.temperature_2m_min[0]
+      : Math.max(10, Math.round(currentTemp - 4));
+
+  const currentHumidity =
+    typeof forecastData?.current?.relative_humidity_2m === 'number'
+      ? forecastData.current.relative_humidity_2m
+      : 55;
+
+  const currentWeatherCode =
+    typeof forecastData?.current?.weather_code === 'number'
+      ? forecastData.current.weather_code
+      : 0;
+
+  const currentWindSpeed =
+    typeof forecastData?.current?.wind_speed_10m === 'number'
+      ? forecastData.current.wind_speed_10m
+      : 5.0;
+
+  const heatScore = calculateHeatScore(apparentTempMaxToday, currentTemp, currentApparentTemp);
 
   // 2. Process AQI
   const currentUsAqi = typeof aqiData?.current?.us_aqi === 'number' ? aqiData.current.us_aqi : 95;
@@ -139,8 +204,16 @@ export async function fetchClimateRiskData(
 
   for (let i = 1; i <= 3; i++) {
     const dateStr = forecastData?.daily?.time?.[i];
-    const dateObj = dateStr ? new Date(dateStr) : new Date(Date.now() + i * 86400000);
-    const dayName = daysOfWeek[dateObj.getDay()];
+    let dayName = 'Day';
+    if (dateStr) {
+      const [yr, mo, da] = dateStr.split('-').map(Number);
+      const dObj = new Date(yr, mo - 1, da, 12, 0, 0);
+      dayName = daysOfWeek[dObj.getDay()];
+    } else {
+      const dObj = new Date(Date.now() + i * 86400000);
+      dayName = daysOfWeek[dObj.getDay()];
+    }
+
     const tempMax =
       typeof forecastData?.daily?.apparent_temperature_max?.[i] === 'number'
         ? forecastData.daily.apparent_temperature_max[i]
@@ -155,12 +228,18 @@ export async function fetchClimateRiskData(
     const dayBlended = calculateOverallRisk(dayHeat, aqiScore.score, dayFlood);
 
     threeDayOutlook.push({
-      date: dateStr || dateObj.toISOString().split('T')[0],
+      date: dateStr || new Date(Date.now() + i * 86400000).toISOString().split('T')[0],
       dayName,
       apparentTempMax: tempMax,
       precipitationSum: precip,
       overallScore: dayBlended.overallScore,
       level: dayBlended.overallLevel,
+      tempMax: typeof forecastData?.daily?.temperature_2m_max?.[i] === 'number'
+        ? Math.round(forecastData.daily.temperature_2m_max[i])
+        : Math.round(tempMax),
+      tempMin: typeof forecastData?.daily?.temperature_2m_min?.[i] === 'number'
+        ? Math.round(forecastData.daily.temperature_2m_min[i])
+        : Math.round(tempMax - 5),
     });
   }
 
@@ -171,6 +250,17 @@ export async function fetchClimateRiskData(
     heat: heatScore,
     aqi: aqiScore,
     flood: floodScore,
+    currentWeather: {
+      temperature: Math.round(currentTemp * 10) / 10,
+      apparentTemperature: Math.round(currentApparentTemp * 10) / 10,
+      humidity: currentHumidity,
+      weatherCode: currentWeatherCode,
+      weatherDescription: getWeatherDescription(currentWeatherCode),
+      tempMax: Math.round(tempMaxToday),
+      tempMin: Math.round(tempMinToday),
+      apparentTempMax: Math.round(apparentTempMaxToday),
+      windSpeed: currentWindSpeed,
+    },
     threeDayOutlook,
     timestamp: Date.now(),
     locationName: safeCity,
@@ -181,9 +271,9 @@ export async function fetchClimateRiskData(
  * Fallback risk data when offline and no cache is present.
  */
 export function getMockFallbackRiskData(cityName = 'Hyderabad, India'): ComprehensiveRiskResult {
-  const heat = calculateHeatScore(34.5);
-  const aqi = calculateAqiScore(112, 42);
-  const flood = calculateFloodScore(18);
+  const heat = calculateHeatScore(34.5, 28.4, 30.1);
+  const aqi = calculateAqiScore(101, 38.1);
+  const flood = calculateFloodScore(0);
   const overall = calculateOverallRisk(heat.score, aqi.score, flood.score);
 
   return {
@@ -193,30 +283,47 @@ export function getMockFallbackRiskData(cityName = 'Hyderabad, India'): Comprehe
     heat,
     aqi,
     flood,
+    currentWeather: {
+      temperature: 28.4,
+      apparentTemperature: 30.1,
+      humidity: 52,
+      weatherCode: 1,
+      weatherDescription: 'Mainly clear',
+      tempMax: 32,
+      tempMin: 24,
+      apparentTempMax: 35,
+      windSpeed: 6.2,
+    },
     threeDayOutlook: [
-      {
-        date: '2026-10-22',
-        dayName: 'Thu',
-        apparentTempMax: 35,
-        precipitationSum: 4,
-        overallScore: 48,
-        level: 'Moderate',
-      },
-      {
-        date: '2026-10-23',
-        dayName: 'Fri',
-        apparentTempMax: 36,
-        precipitationSum: 12,
-        overallScore: 54,
-        level: 'Moderate',
-      },
       {
         date: '2026-10-24',
         dayName: 'Sat',
+        apparentTempMax: 34,
+        precipitationSum: 0,
+        overallScore: 48,
+        level: 'Moderate',
+        tempMax: 33,
+        tempMin: 24,
+      },
+      {
+        date: '2026-10-25',
+        dayName: 'Sun',
         apparentTempMax: 33,
-        precipitationSum: 28,
-        overallScore: 62,
-        level: 'High',
+        precipitationSum: 0,
+        overallScore: 46,
+        level: 'Moderate',
+        tempMax: 32,
+        tempMin: 24,
+      },
+      {
+        date: '2026-10-26',
+        dayName: 'Mon',
+        apparentTempMax: 31,
+        precipitationSum: 0,
+        overallScore: 44,
+        level: 'Moderate',
+        tempMax: 31,
+        tempMin: 23,
       },
     ],
     timestamp: Date.now(),

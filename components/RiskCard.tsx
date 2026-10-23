@@ -31,7 +31,14 @@ export const RiskCard: React.FC<RiskCardProps> = ({ title, hazardType, data }) =
           </View>
           <View style={styles.titleTexts}>
             <Text style={[styles.title, { color: theme.text }]}>{title.toUpperCase()}</Text>
-            <Text style={[styles.rawValue, { color: theme.textMuted }]}>{data.rawValue}</Text>
+            <View style={styles.valueRow}>
+              <Text style={[styles.rawValue, { color: theme.text }]}>{data.rawValue}</Text>
+              {data.peakValue && (
+                <Text style={[styles.peakBadge, { color: theme.textMuted }]}>
+                  {' '}· Peak {data.peakValue}
+                </Text>
+              )}
+            </View>
           </View>
         </View>
 
@@ -94,9 +101,18 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     letterSpacing: -0.5,
   },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
   rawValue: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 12,
+  },
+  peakBadge: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
   },
   levelBadge: {
     flexDirection: 'row',
