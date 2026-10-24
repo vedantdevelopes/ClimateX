@@ -11,6 +11,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.vedantdevelopes.climatex",
       "adaptiveIcon": {
         "backgroundColor": "#6B0010",
         "foregroundImage": "./assets/android-icon-foreground.png",
